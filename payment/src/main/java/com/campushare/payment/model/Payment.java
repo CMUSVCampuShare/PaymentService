@@ -16,7 +16,7 @@ import java.util.List;
 
 public class Payment {
     @Id
-    private String paymentId; 
+    private String 3; 
     private String userId; // get user id from user service
 }
 
