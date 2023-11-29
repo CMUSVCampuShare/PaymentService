@@ -16,10 +16,42 @@ public class PaymentController {
 
     @Autowired
     private PaypalSandbox paypalSandbox;
+
     @PostMapping("/exchangeAccessCodeByAuthorizationCode")
-    public String getAccessToken(@RequestParam String authorizationCode) throws JsonProcessingException {
+    public String preAuthorization(@RequestParam String authorizationCode) throws JsonProcessingException {
         String accessToken = paypalSandbox.getPayPalAccessToken(authorizationCode);
         return accessToken;
     }
+
+//    @PostMapping("/testAuthorizationId")
+//    public String testAuthorizationId(@RequestParam String accessToken) throws JsonProcessingException {
+//        String authorizationId = paypalSandbox.getAuthorizationId(accessToken, 2.00);
+//        return authorizationId;
+//    }
+//
+//    @PostMapping("/testCreatePreAuthorizationPayment")
+//    public String testCreatePreAuthorizationPayment(@RequestParam String accessToken, @RequestParam String payer_id, @RequestParam String receiver_id, @RequestParam double amount) throws JsonProcessingException {
+//        String authorizationId = paypalSandbox.createPreAuthorizationPayment(accessToken, payer_id, receiver_id, amount);
+//        return authorizationId;
+//    }
+
+    @PostMapping("/createOrder")
+    public String createOrder(@RequestParam String accessToken) {
+        String response = paypalSandbox.createOrder(accessToken);
+        return response;
+    }
+
+    @PostMapping("/authorizeOrder")
+    public String authorizeOrder(@RequestParam String accessToken, @RequestParam String orderId) {
+        String response = paypalSandbox.authorizeOrder(accessToken, orderId);
+        return response;
+    }
+
+    @PostMapping("/capturePayment")
+    public String capturePayment(@RequestParam String accessToken, @RequestParam String authorizationId) {
+        String response = paypalSandbox.capturePayment(accessToken, authorizationId);
+        return response;
+    }
+
 
 }
