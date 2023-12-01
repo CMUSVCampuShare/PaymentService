@@ -1,9 +1,6 @@
 package com.campushare.PaymentService.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,8 +28,10 @@ public class PaypalSandbox {
     @Value("${paypal.paypal.oauth.url}")
     private String PAYPAL_OAUTH_URL;
 
+//    @Autowired
+//    private  ObjectMapper objectMapper;
 
-    public String getPayPalAccessToken(String authorizationCode) throws JsonProcessingException {
+    public String getPayPalAccessToken(String authorizationCode, String driverPaypalId) throws JsonProcessingException {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         headers.setBasicAuth(CLIENT_ID, CLIENT_SECRET);
@@ -43,158 +42,71 @@ public class PaypalSandbox {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
         ResponseEntity<String> response = restTemplate.postForEntity(PAYPAL_OAUTH_URL, request, String.class);
-
         logger.info("The response of getPayPalAccessToken is: " + response);
 
         String responseBody = response.getBody();
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode rootNode = objectMapper.readTree(responseBody);
         String accessToken = rootNode.path("access_token").asText();
+        logger.info("The accessToken is: " + accessToken);
+
         return accessToken;
     }
-    public String createOrder(String accessToken) {
-        // 设置请求头
+
+    public String createOrder(String accessToken, String driverPaypalId) throws JsonProcessingException {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(accessToken);
 
-        // 创建请求体
-        String requestJson = "{"
-                + "\"intent\": \"AUTHORIZE\","
-                + "\"purchase_units\": ["
-                + "  {"
-                + "    \"amount\": {"
-                + "      \"currency_code\": \"USD\","
-                + "      \"value\": \"520.00\""
-                + "    },"
-                + "    \"payee\": {"
-                + "      \"email_address\": \"sb-grwaw27301475@personal.example.com\""
-                + "    }"
-                + "  }"
-                + "]"
-                + "}";
+        String requestJson = "{" + "\"intent\": \"AUTHORIZE\"," + "\"purchase_units\": [" + "  {" + "    \"amount\": {" + "      \"currency_code\": \"USD\"," + "      \"value\": \"2.00\"" + "    }," + "    \"payee\": {" + "      \"email_address\": \"" + driverPaypalId + "\"" + "    }" + "  }" + "]" + "}";
 
         HttpEntity<String> request = new HttpEntity<>(requestJson, headers);
 
+        ResponseEntity<String> response = restTemplate.postForEntity("https://api-m.sandbox.paypal.com/v2/checkout/orders", request, String.class);
+        logger.info("The response of createOrder is: " + response);
 
-        // 发送POST请求
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://api-m.sandbox.paypal.com/v2/checkout/orders",
-                request,
-                String.class
-        );
+        String responseBody = response.getBody();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode rootNode = objectMapper.readTree(responseBody);
+        String orderId = rootNode.path("id").asText();
+        logger.info("The orderId is: " + orderId);
 
-        return response.toString();
+        return orderId;
     }
 
-    public String authorizeOrder(String accessToken, String orderId) {
+    public String authorizeOrder(String accessToken, String orderId) throws JsonProcessingException {
 
-
-        // 设置请求头
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(accessToken);
-
-        // 创建空的请求体
         HttpEntity<String> request = new HttpEntity<>("{}", headers);
-        logger.info("🌊The request is: " + request);
+        ResponseEntity<String> response = restTemplate.postForEntity("https://api-m.sandbox.paypal.com/v2/checkout/orders/" + orderId + "/authorize", request, String.class);
+        logger.info("The response of authorizeOrder is: " + request);
 
-        // 发送POST请求来授权订单
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://api-m.sandbox.paypal.com/v2/checkout/orders/" + orderId + "/authorize",
-                request,
-                String.class
-        );
+        String responseBody = response.getBody();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode rootNode = objectMapper.readTree(responseBody);
 
+        JsonNode purchaseUnitsNode = rootNode.path("purchase_units");
+        JsonNode paymentsNode = purchaseUnitsNode.get(0).path("payments");
+        JsonNode authorizationsNode = paymentsNode.path("authorizations");
+        String authorizationId = authorizationsNode.get(0).path("id").asText();
+        logger.info("The authorizationId is: " + authorizationId);
 
-        return response.toString();
+        return authorizationId;
     }
 
     public String capturePayment(String accessToken, String authorizationId) {
-        logger.info("🌊The accessToken is: " + accessToken);
-        logger.info("🌊The authorizationId is: " + authorizationId);
-        // 设置请求头
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(accessToken);
-
-        // 创建空的请求体
         HttpEntity<String> request = new HttpEntity<>("{}", headers);
 
-        logger.info("🌊The request is: " + request);
-        // 发送POST请求来捕获支付
-        ResponseEntity<String> response = restTemplate.postForEntity(
-                "https://api.sandbox.paypal.com/v2/payments/authorizations/" + authorizationId + "/capture",
-                request,
-                String.class
-        );
-        logger.info("🌊The response is: " + response);
+        ResponseEntity<String> response = restTemplate.postForEntity("https://api.sandbox.paypal.com/v2/payments/authorizations/" + authorizationId + "/capture", request, String.class);
+        logger.info("The response of capturePayment is: " + response);
+
         return response.toString();
     }
 
-
-//    @Data
-//    @AllArgsConstructor
-//    public static class PaymentRequest {
-//        private String payer_id;
-//        private String receiver_id;
-//        private double amount;
-//    }
-
-//    public String createPreAuthorizationPayment(String access_token, String payer_id, String receiver_id, double amount) throws JsonProcessingException {
-//        logger.info("👌createPreAuthorizationPayment is called" +
-//                ",\n access_token: " + access_token +
-//                ",\n payer_id: " + payer_id +
-//                ",\n receiver_id: " + receiver_id
-//                + ",\n amount: " + amount);
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.set("Authorization", "Bearer " + access_token);
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        PaymentRequest paymentRequest = new PaymentRequest(payer_id, receiver_id, amount);
-//        String jsonRequest = objectMapper.writeValueAsString(paymentRequest);
-//        HttpEntity<String> request = new HttpEntity<>(jsonRequest, headers);
-//        logger.info("🦊The request of createPreAuthorizationPayment is: " + request);
-//
-//        ResponseEntity<String> response = restTemplate.exchange(
-//                "https://api-m.sandbox.paypal.com/v2/payments/authorizations/create",
-//                HttpMethod.POST,
-//                request,
-//                String.class
-//        );
-//        logger.info("🤣The response of getAuthorizationId is: " + response);
-//        JsonNode responseObject = objectMapper.readTree(response.getBody());
-//        String authorizationId = responseObject.path("id").asText();
-//        logger.info("☁️authorizationId is: " + authorizationId);
-//
-//        return authorizationId;
-//    }
-
-//    public String getAuthorizationId(String access_token, double amount) throws JsonProcessingException {
-//        logger.info("👌getAuthorizationId is called, the access_token is: " + access_token + ", amount: " + amount);
-//        HttpHeaders headers = new HttpHeaders();
-//        headers.setContentType(MediaType.APPLICATION_JSON);
-//        headers.setBearerAuth(access_token);
-//
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode paymentDetails = objectMapper.createObjectNode();
-//        paymentDetails.put("intent", "AUTHORIZE");
-//
-//        ObjectNode amountNode = objectMapper.createObjectNode();
-//        amountNode.put("currency_code", "USD");
-//        amountNode.put("value", amount);
-//        paymentDetails.set("amount", amountNode);
-//
-//        HttpEntity<String> request = new HttpEntity<>(objectMapper.writeValueAsString(paymentDetails), headers);
-//
-//        logger.info("🦊The request of getAuthorizationId is: " + request);
-//
-//        ResponseEntity<String> response = restTemplate.postForEntity("https://api-m.sandbox.paypal.com/v2/payments/authorizations/create", request, String.class);
-//
-//        logger.info("🤣The response of getAuthorizationId is: " + response);
-//
-//        JsonNode responseObject = objectMapper.readTree(response.getBody());
-//        String authorizationId = responseObject.path("id").asText();
-//        logger.info("☁️authorizationId is: " + authorizationId);
-//        return authorizationId;
-//    }
 }

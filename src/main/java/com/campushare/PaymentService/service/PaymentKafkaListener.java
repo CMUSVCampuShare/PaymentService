@@ -15,7 +15,7 @@ public class PaymentKafkaListener {
     private PaymentService paymentService;
 
     @KafkaListener(topics = "user_payment_topic", groupId = "payment-group", containerFactory = "kafkaListenerContainerFactory")
-    public void listenPostRide(String usersRelatedPaymentDTOString) throws JsonProcessingException, CannotGetUserException {
+    public void listenUserPaymentTopic(String usersRelatedPaymentDTOString) throws JsonProcessingException, CannotGetUserException {
         logger.info("Received a user_payment_topic message from Kafka: {}", usersRelatedPaymentDTOString);
         ObjectMapper objectMapper = new ObjectMapper();
         UsersRelatedPaymentDTO usersRelatedPaymentDTO = objectMapper.readValue(usersRelatedPaymentDTOString, UsersRelatedPaymentDTO.class);

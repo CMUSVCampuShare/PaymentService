@@ -1,5 +1,7 @@
 package com.campushare.PaymentService.controller;
 
+import com.campushare.PaymentService.exception.OrderNotFoundException;
+import com.campushare.PaymentService.service.PaymentService;
 import com.campushare.PaymentService.service.PaypalSandbox;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.web.bind.annotation.*;
@@ -15,43 +17,39 @@ public class PaymentController {
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
 
     @Autowired
+    private PaymentService paymentService;
+    @Autowired
     private PaypalSandbox paypalSandbox;
 
-    @PostMapping("/exchangeAccessCodeByAuthorizationCode")
-    public String preAuthorization(@RequestParam String authorizationCode) throws JsonProcessingException {
-        String accessToken = paypalSandbox.getPayPalAccessToken(authorizationCode);
-        return accessToken;
-    }
 
-//    @PostMapping("/testAuthorizationId")
-//    public String testAuthorizationId(@RequestParam String accessToken) throws JsonProcessingException {
-//        String authorizationId = paypalSandbox.getAuthorizationId(accessToken, 2.00);
-//        return authorizationId;
-//    }
-//
-//    @PostMapping("/testCreatePreAuthorizationPayment")
-//    public String testCreatePreAuthorizationPayment(@RequestParam String accessToken, @RequestParam String payer_id, @RequestParam String receiver_id, @RequestParam double amount) throws JsonProcessingException {
-//        String authorizationId = paypalSandbox.createPreAuthorizationPayment(accessToken, payer_id, receiver_id, amount);
-//        return authorizationId;
-//    }
-
-    @PostMapping("/createOrder")
-    public String createOrder(@RequestParam String accessToken) {
-        String response = paypalSandbox.createOrder(accessToken);
-        return response;
+    @PostMapping("/getAccessTokenAndCreateOrder")
+    public String getAccessTokenAndCreateOrder(@RequestParam String authorizationCode, @RequestParam String driverPaypalId, @RequestParam String rideId, @RequestParam String passengerId) throws JsonProcessingException {
+        String accessToken = paypalSandbox.getPayPalAccessToken(authorizationCode, driverPaypalId);
+        String orderId = paypalSandbox.createOrder(accessToken, driverPaypalId);
+        paymentService.saveAccessTokenToDB(orderId, rideId, passengerId, accessToken);
+        String orderAuthUrl = "https://www.sandbox.paypal.com/checkoutnow?token=" + orderId;
+        return orderAuthUrl; // TODO: Frontend need to redirect the user to this orderAuthUrl
     }
 
     @PostMapping("/authorizeOrder")
-    public String authorizeOrder(@RequestParam String accessToken, @RequestParam String orderId) {
-        String response = paypalSandbox.authorizeOrder(accessToken, orderId);
-        return response;
+    public String authorizeOrder(@RequestParam String rideId, @RequestParam String passengerId) throws JsonProcessingException, OrderNotFoundException {
+        String accessToken = paymentService.findAccessToken(rideId, passengerId);
+        String orderId = paymentService.findOrderId(rideId, passengerId);
+        String authorizationId = paypalSandbox.authorizeOrder(accessToken, orderId);
+        paymentService.addAuthorizationId(rideId, passengerId, authorizationId);
+        return authorizationId;
     }
+
 
     @PostMapping("/capturePayment")
-    public String capturePayment(@RequestParam String accessToken, @RequestParam String authorizationId) {
-        String response = paypalSandbox.capturePayment(accessToken, authorizationId);
-        return response;
-    }
+    public String capturePayment(@RequestParam String rideId, @RequestParam String passengerId) throws OrderNotFoundException {
 
+        String accessToken = paymentService.findAccessToken(rideId, passengerId);
+        String authorizationId = paymentService.findAuthorizationId(rideId, passengerId);
+
+        String capturePaymentResponse = paypalSandbox.capturePayment(accessToken, authorizationId);
+        paymentService.addCapturePaymentResponse(rideId, passengerId, capturePaymentResponse);
+        return capturePaymentResponse;
+    }
 
 }
