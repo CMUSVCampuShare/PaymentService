@@ -58,7 +58,22 @@ public class PaypalSandbox {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(accessToken);
 
-        String requestJson = "{" + "\"intent\": \"AUTHORIZE\"," + "\"purchase_units\": [" + "  {" + "    \"amount\": {" + "      \"currency_code\": \"USD\"," + "      \"value\": \"2.00\"" + "    }," + "    \"payee\": {" + "      \"email_address\": \"" + driverPaypalId + "\"" + "    }" + "  }" + "]" + "}";
+        String requestJson = "{"
+                + "\"intent\": \"AUTHORIZE\","
+                + "\"application_context\": {"
+                + "  \"return_url\": \"http://127.0.0.1:3000/chat\"," // TODO: need to change to the frontend page indicating the authorization is done
+                + "  \"cancel_url\": \"http://127.0.0.1:3000/profile\"" // TODO: need to change to the frontend page indicating the authorization is cancelled
+                + "},"
+                + "\"purchase_units\": [{"
+                + "    \"amount\": {"
+                + "      \"currency_code\": \"USD\","
+                + "      \"value\": \"2.00\""
+                + "    },"
+                + "    \"payee\": {"
+                + "      \"email_address\": \"" + driverPaypalId + "\""
+                + "    }"
+                + "  }"
+                + "]}";
 
         HttpEntity<String> request = new HttpEntity<>(requestJson, headers);
 
