@@ -40,16 +40,4 @@ public class PaymentController {
         return authorizationId;
     }
 
-
-    @PostMapping("/capturePayment")
-    public String capturePayment(@RequestParam String rideId, @RequestParam String passengerId) throws OrderNotFoundException {
-
-        String accessToken = paymentService.findAccessToken(rideId, passengerId);
-        String authorizationId = paymentService.findAuthorizationId(rideId, passengerId);
-
-        String capturePaymentResponse = paypalSandbox.capturePayment(accessToken, authorizationId);
-        paymentService.addCapturePaymentResponse(rideId, passengerId, capturePaymentResponse);
-        return capturePaymentResponse;
-    }
-
 }
