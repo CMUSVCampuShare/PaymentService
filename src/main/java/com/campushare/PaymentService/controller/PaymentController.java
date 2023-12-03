@@ -1,5 +1,6 @@
 package com.campushare.PaymentService.controller;
 
+import com.campushare.PaymentService.exception.CannotGetUserException;
 import com.campushare.PaymentService.exception.OrderNotFoundException;
 import com.campushare.PaymentService.service.PaymentService;
 import com.campushare.PaymentService.service.PaypalSandbox;
@@ -23,7 +24,9 @@ public class PaymentController {
 
 
     @PostMapping("/getAccessTokenAndCreateOrder")
-    public String getAccessTokenAndCreateOrder(@RequestParam String authorizationCode, @RequestParam String driverPaypalId, @RequestParam String rideId, @RequestParam String passengerId) throws JsonProcessingException {
+    public String getAccessTokenAndCreateOrder(@RequestParam String authorizationCode, @RequestParam String driverId, @RequestParam String rideId, @RequestParam String passengerId) throws JsonProcessingException, CannotGetUserException {
+        String driverPaypalId = paymentService.getPayPalId(driverId);
+        logger.info("Driver's PaypalId is: " + driverPaypalId);
         String accessToken = paypalSandbox.getPayPalAccessToken(authorizationCode, driverPaypalId);
         String orderId = paypalSandbox.createOrder(accessToken, driverPaypalId);
         paymentService.saveAccessTokenToDB(orderId, rideId, passengerId, accessToken);

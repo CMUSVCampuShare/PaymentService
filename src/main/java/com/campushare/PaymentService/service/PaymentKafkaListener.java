@@ -1,7 +1,6 @@
 package com.campushare.PaymentService.service;
 
 import com.campushare.PaymentService.dto.UsersRelatedPaymentDTO;
-import com.campushare.PaymentService.exception.CannotGetUserException;
 import com.campushare.PaymentService.exception.OrderNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,7 +17,7 @@ public class PaymentKafkaListener {
     private PaymentService paymentService;
 
     @KafkaListener(topics = "user_payment_topic", groupId = "payment-group", containerFactory = "kafkaListenerContainerFactory")
-    public void listenUserPaymentTopic(String usersRelatedPaymentDTOString) throws JsonProcessingException, CannotGetUserException, OrderNotFoundException {
+    public void listenUserPaymentTopic(String usersRelatedPaymentDTOString) throws JsonProcessingException, OrderNotFoundException {
         logger.info("Received a user_payment_topic message from Kafka: {}", usersRelatedPaymentDTOString);
         ObjectMapper objectMapper = new ObjectMapper();
         UsersRelatedPaymentDTO usersRelatedPaymentDTO = objectMapper.readValue(usersRelatedPaymentDTOString, UsersRelatedPaymentDTO.class);

@@ -38,7 +38,7 @@ public class PaymentService {
     private static final Logger logger = LoggerFactory.getLogger(PaymentKafkaListener.class);
 
 
-    public void createPayment(UsersRelatedPaymentDTO usersRelatedPaymentDTO) throws CannotGetUserException, OrderNotFoundException {
+    public void createPayment(UsersRelatedPaymentDTO usersRelatedPaymentDTO) throws OrderNotFoundException {
         String rideId = usersRelatedPaymentDTO.getRideId();
         int numberOfPassengers = usersRelatedPaymentDTO.getPassengerIds().length;
         String[] passengerIds = new String[numberOfPassengers];
@@ -51,9 +51,6 @@ public class PaymentService {
     }
 
     public String capturePayment(String rideId, String passengerId) throws OrderNotFoundException {
-        // rideId = 391c603e-3359-4462-b38c-5323f4a3e755
-        // passengerId[0] = 8f3c5e6a-9fca-4a09-a609-e90592d65851
-        // passengerPayPalId[1] = 8f3c5e6a-9fca-4a09-a609-e90592d65851
         String accessToken = findAccessToken(rideId, passengerId);
         String authorizationId = findAuthorizationId(rideId, passengerId);
 
@@ -61,31 +58,6 @@ public class PaymentService {
         addCapturePaymentResponse(rideId, passengerId, capturePaymentResponse);
         return capturePaymentResponse;
     }
-
-
-//    public String getPayPalId(String userId) throws CannotGetUserException {
-////        String userServiceUrl = "http://localhost:8081/users/" + userId;
-////        ResponseEntity<User> response = restTemplate.getForEntity(userServiceUrl, User.class);
-//
-//        String userServiceUrl = "http://localhost:8081/users/{userId}"; // TODO: change to the URL of the UserService
-//        Map<String, String> uriVariables = new HashMap<>();
-//        uriVariables.put("userId", userId);
-//
-//        ResponseEntity<User> response = restTemplate.exchange(
-//                userServiceUrl,
-//                HttpMethod.GET,
-//                null,
-//                new ParameterizedTypeReference<User>() {},
-//                uriVariables
-//        );
-//
-//        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-//            User user = response.getBody();
-//            return user.getAccount();
-//        } else {
-//            throw new CannotGetUserException("Cannot get the user: " + response);
-//        }
-//    }
 
     public void saveAccessTokenToDB(String orderId, String rideId, String passengerId, String accessToken) {
         AccessTokenModel accessTokenModel = new AccessTokenModel(orderId, rideId, passengerId, accessToken, null, null);
@@ -124,6 +96,28 @@ public class PaymentService {
             accessTokenRepository.save(accessTokenModel);
         } else {
             throw new OrderNotFoundException("Cannot find the order related to rideId: " + rideId + ", and passengerId: " + passengerId);
+        }
+    }
+
+    public String getPayPalId(String userId) throws CannotGetUserException {
+        String userServiceUrl = "http://localhost:8081/users/{userId}"; // TODO: change to the URL of the UserService
+        Map<String, String> uriVariables = new HashMap<>();
+        uriVariables.put("userId", userId);
+
+        ResponseEntity<User> response = restTemplate.exchange(
+                userServiceUrl,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<User>() {
+                },
+                uriVariables
+        );
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            User user = response.getBody();
+            return user.getAccount();
+        } else {
+            throw new CannotGetUserException("Cannot get the user: " + response);
         }
     }
 
