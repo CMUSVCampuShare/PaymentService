@@ -14,6 +14,7 @@ import java.util.Date;
 public class Payment {
     @Id
     private String paymentId;
+    private String rideId;
     private String moneyFrom;
     private String moneyTo;
     private Date timestamp;

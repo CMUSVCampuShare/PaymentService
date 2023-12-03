@@ -9,10 +9,16 @@ import com.campushare.PaymentService.model.AccessTokenModel;
 import com.campushare.PaymentService.exception.CannotGetUserException;
 import com.campushare.PaymentService.exception.OrderNotFoundException;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.Date;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -28,33 +34,29 @@ public class PaymentService {
     private RestTemplate restTemplate;
 
     @Autowired
-    PaypalSandbox paypalSandbox = new PaypalSandbox();
+    PaypalSandbox paypalSandbox;
+    private static final Logger logger = LoggerFactory.getLogger(PaymentKafkaListener.class);
 
 
-    public void createPayment(UsersRelatedPaymentDTO usersRelatedPaymentDTO) throws CannotGetUserException {
-        String driverPaypalId = getPayPalId(usersRelatedPaymentDTO.getDriverId());
+    public void createPayment(UsersRelatedPaymentDTO usersRelatedPaymentDTO) throws OrderNotFoundException {
+        String rideId = usersRelatedPaymentDTO.getRideId();
         int numberOfPassengers = usersRelatedPaymentDTO.getPassengerIds().length;
-        String[] passengerPaypalIds = new String[numberOfPassengers];
+        String[] passengerIds = new String[numberOfPassengers];
         for (int i = 0; i < numberOfPassengers; i++) {
-            passengerPaypalIds[i] = getPayPalId(usersRelatedPaymentDTO.getPassengerIds()[i]);
-
-//          TODO:  String capturePaymentResponse = paypalSandbox.capturePayment(accessToken, authorizationId);
-            Payment payment = new Payment(UUID.randomUUID().toString(), driverPaypalId, passengerPaypalIds[i], new Date(), 2.00);
+            passengerIds[i] = usersRelatedPaymentDTO.getPassengerIds()[i];
+            capturePayment(rideId, passengerIds[i]);
+            Payment payment = new Payment(UUID.randomUUID().toString(), rideId, passengerIds[i], usersRelatedPaymentDTO.getDriverId(), new Date(), 2.00);
             paymentRepository.save(payment);
         }
     }
 
+    public String capturePayment(String rideId, String passengerId) throws OrderNotFoundException {
+        String accessToken = findAccessToken(rideId, passengerId);
+        String authorizationId = findAuthorizationId(rideId, passengerId);
 
-    public String getPayPalId(String userId) throws CannotGetUserException {
-        String userServiceUrl = "http://localhost:8081/users/" + userId; // TODO: change to the URL of the UserService
-        ResponseEntity<User> response = restTemplate.getForEntity(userServiceUrl, User.class);
-
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            User user = response.getBody();
-            return user.getAccount();
-        } else {
-            throw new CannotGetUserException("Cannot get the user: " + response);
-        }
+        String capturePaymentResponse = paypalSandbox.capturePayment(accessToken, authorizationId);
+        addCapturePaymentResponse(rideId, passengerId, capturePaymentResponse);
+        return capturePaymentResponse;
     }
 
     public void saveAccessTokenToDB(String orderId, String rideId, String passengerId, String accessToken) {
@@ -94,6 +96,28 @@ public class PaymentService {
             accessTokenRepository.save(accessTokenModel);
         } else {
             throw new OrderNotFoundException("Cannot find the order related to rideId: " + rideId + ", and passengerId: " + passengerId);
+        }
+    }
+
+    public String getPayPalId(String userId) throws CannotGetUserException {
+        String userServiceUrl = "http://localhost:8081/users/{userId}"; // TODO: change to the URL of the UserService
+        Map<String, String> uriVariables = new HashMap<>();
+        uriVariables.put("userId", userId);
+
+        ResponseEntity<User> response = restTemplate.exchange(
+                userServiceUrl,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<User>() {
+                },
+                uriVariables
+        );
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            User user = response.getBody();
+            return user.getAccount();
+        } else {
+            throw new CannotGetUserException("Cannot get the user: " + response);
         }
     }
 
