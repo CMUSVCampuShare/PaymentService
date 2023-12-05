@@ -61,7 +61,7 @@ public class PaypalSandbox {
         String requestJson = "{"
                 + "\"intent\": \"AUTHORIZE\","
                 + "\"application_context\": {"
-                + "  \"return_url\": \"http://127.0.0.1:3000/chat\"," // TODO: need to change to the frontend page indicating the authorization is done
+                + "  \"return_url\": \"https://www.ece.cmu.edu/directory/bios/ssousa-leonardo.html\"," // TODO: need to change to the frontend page indicating the authorization is done
                 + "  \"cancel_url\": \"http://127.0.0.1:3000/profile\"" // TODO: need to change to the frontend page indicating the authorization is cancelled
                 + "},"
                 + "\"purchase_units\": [{"
