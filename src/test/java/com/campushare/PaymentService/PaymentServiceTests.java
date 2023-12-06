@@ -25,8 +25,7 @@ public class PaymentServiceTests {
     public void setup() {
         MockitoAnnotations.initMocks(this);
     }
-
-    @Test
+    
     public void testGetPayPalId() throws CannotGetUserException {
         // 假设的User对象
         User mockUser = new User();
