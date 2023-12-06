@@ -1,4 +1,4 @@
-package com.campushare.PaymentService;
+package com.campushare.PaymentService.service;
 import static org.mockito.Mockito.*;
 
 import com.campushare.PaymentService.dto.UsersRelatedPaymentDTO;
